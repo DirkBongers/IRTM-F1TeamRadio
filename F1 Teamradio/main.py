@@ -6,13 +6,24 @@ Created on Thu Apr 12 21:13:10 2018
 """
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+from nltk.tokenize import word_tokenize
+#from wordcloud import WordCloud
 PATH = 'C:\\Users\\dbn\\Desktop\\IRTM-F1TeamRadio\\F1 Teamradio\\'
 filelist = os.listdir(PATH + 'Transcripts')
 data = pd.read_excel(PATH+'Transcripts\\'+ filelist[0])
+racename = filelist[0].replace('2017-','')
+racename = racename.replace('-Race.xlsx','')
+Track = [racename]*len(data.Driver)
+data['Track'] = Track
 for i in range(1,19):
     df = pd.read_excel(PATH+'Transcripts\\'+ filelist[i])
-    print(df.columns.values)
-    print(filelist[i])
+    racename = filelist[i].replace('2017-','')
+    racename = racename.replace('-Race.xlsx','')
+    Track = [racename]*len(df.Driver)
+    df['Track'] = Track
+    #print(df.columns.values)
+    #print(filelist[i])
     data = pd.concat([data,df])
 data = data.dropna(axis=0,how='any')
 data.index = range(0,len(data.Driver))
@@ -88,12 +99,352 @@ for i in range(0,len(data.To.unique())):
 DriverToDictionary = DriverToDictionary.fillna(0)        
 
 
-def generateWordCloud(nameDriver,DriverDictionary):
-    plt.figure()
-    wc = WordCloud().generate_from_frequencies(DriverDictionary[nameDriver])
-    plt.imshow(wc,interpolation = 'bilinear')
-    plt.axis('off')
+#def generateWordCloud(nameDriver,DriverDictionary):
+#    plt.figure()
+#    wc = WordCloud().generate_from_frequencies(DriverDictionary[nameDriver])
+#    plt.imshow(wc,interpolation = 'bilinear')
+#    plt.axis('off')
+#
+#generateWordCloud('Romain Grosjean',DriverFromDictionary)
+#generateWordCloud('Max Verstappen',DriverFromDictionary)
+#generateWordCloud('Lewis Hamilton',DriverFromDictionary)
 
-generateWordCloud('Romain Grosjean',DriverFromDictionary)
-generateWordCloud('Max Verstappen',DriverFromDictionary)
-generateWordCloud('Lewis Hamilton',DriverFromDictionary)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import re
+import string
+import sys
+import warnings
+from random import Random
+
+import nltk
+import numpy as np
+from gensim import corpora
+from nltk import ngrams
+from nltk.stem.snowball import SnowballStemmer
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+
+
+class CleanMachine:
+    def __init__(self):
+        """
+        Initializes a SentenceCleaner object
+        """
+        return
+
+    def clean(self, documents: list, sample: int = -1, seed=1, remove_punctuation: bool = True, language='german',
+              stopwords=nltk.corpus.stopwords.words('german'), stemmer=SnowballStemmer('german'),
+              min_n_words: int = 1, max_n_words: int = sys.maxsize):
+        """
+        Overall function which cleans a list of documents by applying the following pipeline:
+        - removes leading, trailing and multiple whitespaces
+        - removes sentences containing offensive language
+        - remove sentences that are too short or too long
+        - sample
+        - set to lowercase
+        - deal with accents
+        - remove punctuation
+        - remove stopwords
+        - stemming
+
+
+        :param documents: list of documents to clean
+        :param sample: sampling rate
+        :param seed: seed used for sampling rate
+        :param remove_punctuation: whether punctuation should be removed
+        :param language: language of the text
+        :param stopwords: stopwords to remove
+        :param stemmer: stemmer to use
+        :param min_n_words: minimum size of a sentence
+        :param max_n_words: maximum size of a sentence
+        :return: the sentences in their cleaned and original format
+        """
+
+        docs = documents
+
+        # removes leading, trailing and multiple whitespaces
+        # removes sentences containing offensive language
+
+        offensive_words = ['bitch', 'porno', 'sex', 'titten', 'slut']
+        docs = self.sanitize(documents=docs, forbidden_words=offensive_words)
+
+        # remove sentences that are too short or too long
+
+        docs = self.remove_sentences(documents=docs, min_n_words=min_n_words, max_n_words=max_n_words)
+        original_docs = docs
+
+        # sample
+        docs = self.sample(documents=docs, sample=sample, seed=seed)
+        original_docs = self.sample(documents=original_docs, sample=sample, seed=seed)
+
+        # set to lowercase
+        docs = self.to_lowercase(docs)
+
+        # deal with accents
+        docs = self.clean_accents(docs)
+
+        if remove_punctuation:
+            # remove punctuation
+            docs = self.remove_punctuation(docs)
+        # remove stopwords
+        docs = self.remove_stopwords(docs, stopwords=stopwords)
+        # stemming
+        docs = self.stem(docs, stemmer=stemmer)
+        return docs, original_docs
+
+    def sanitize(self, documents: list, forbidden_words: list):
+        """
+        Removes leading and trailing white spaces and transform multiple whitespaces into one
+        Remove sentences containing forbidden words
+        Removes empty sentences
+        :param documents: list of documents to sanitize
+        :param forbidden_words: list of forbidden words
+        :return: sanitized documents
+        """
+        return [re.sub(r'\s+', ' ', str(x).strip()) for x in documents
+                if not any(substring in str(x) for substring in forbidden_words) and str(x) != 'nan']
+
+    def get_gensim_dictionary(self, documents: list, ngrams_min=1, ngrams_max=1):
+        """
+        Generates a gensim dictionary object of the ngrams of a list of documents
+        Gensim dictionary are needed when dealing with gensim topic modelling
+
+        :param documents: list of documents
+        :param ngrams_min: minimum ngram
+        :param ngrams_max: maximum ngram
+        :return: gensim Dictionary
+        """
+
+        docs_ngrams = [[] for doc in documents]
+
+        for i in range(0, len(documents)):
+            for ngram in range(ngrams_min, ngrams_max + 1):
+                list_of_ngrams = ngrams(documents[i].split(), ngram)
+                to_add = [list(item) for item in list_of_ngrams]
+                to_add = [" ".join(word) for word in to_add]
+                docs_ngrams[i].extend(to_add)
+
+        return corpora.Dictionary(docs_ngrams)
+
+    def sample(self, documents: list, sample: int = -1, seed=1):
+        """
+        sample sentences
+        if the sample is between 0 and 1, it will sample a percentage, otherwise, it will
+        sample that number
+        :param documents: list of documents to sample
+        :param sample:  sampling rate/number
+        :param seed: seed used for the sampling
+        :return:
+        """
+
+        rnd = Random(seed)
+
+        # Keep sample between acceptable bounds
+        if sample < 0 or sample > len(documents):
+            sample = len(documents)
+
+        indices = [True] * sample
+        indices.extend([False] * (len(documents) - sample))
+        indices = np.array(indices)
+
+        # Use shuffled indices to make sure both lists are sampled the same way
+        rnd.shuffle(indices)
+        return list(np.array(documents)[indices])
+
+    def remove_sentences(self, documents: list, min_n_words: int = 1, max_n_words: int = sys.maxsize):
+        """
+        Removes documents based on the number of words they contained
+        :param documents: list of documents to be inspected
+        :param min_n_words: minimum number of words allowed in a sentence
+        :param max_n_words: maximum number of words allowed in a sentence
+        :return: sentences which satisfy these conditions
+        """
+        docs = self.tokenize(documents)
+        # Computes the indices that need to be kept
+        to_keep = np.array([len(tokens) <= max_n_words and len(tokens) >= min_n_words for tokens in docs])
+
+        return list(np.array(documents)[to_keep])
+
+    def to_lowercase(self, documents: list):
+        """
+        sets all documents to lowercase
+        :param documents: documents to be inspected
+        :return: list of documents in lowercase
+        """
+        docs = [x.lower() for x in documents]
+        return docs
+
+    def tokenize(self, documents: list, language: str = 'german'):
+        """
+        Tokenizes a list of documents (i.e. extract words from it)
+        Only tokenizes if it hasn't been done yet
+        :param documents: list of documents to be tokenized
+        :param language: specific language used for tokenization
+        :return: tokenized documents
+        """
+
+        docs = []
+        for sent in documents:
+            if type(sent) is str:
+                docs.append(nltk.word_tokenize(sent, language=language))
+            elif type(sent) is list:
+                docs.append(sent)
+            else:
+                raise ValueError('Expected either a string or a list of tokenized values')
+
+        return docs
+
+    def remove_punctuation(self, documents: list):
+        """
+        Remove punctuation from a list of documents
+        :param documents: list of documents to clean
+        :return: cleaned list of documents
+        """
+
+        # Special characters to also be removed
+        special_characters = '😡😠👚👢•👡„👚�💲👜◾“👛️️👕👕?👑👑³💳👚👡👡´💳💲'
+
+        documents = [sent.translate(str.maketrans('', '', string.punctuation + special_characters))
+                     for sent in documents]
+        return documents
+
+    def remove_stopwords(self, documents: list, stopwords: list = nltk.corpus.stopwords.words('german')):
+        """
+        Removes stopwords from a list of documents
+        The documents are assumed to be in lowercase
+        :param documents: list of documents to be inspected
+        :param stopwords: list of stopwords to remove
+        :return: list of documents without stopwords
+        """
+
+        # Add custom stopwords to remove
+        specific_stopwords = ['tinka', 'hallo', 'bitte', 'hey', 'hello', 'gern', 'mochte']
+        stopwords.extend(specific_stopwords)
+
+        temp = []
+        documents = self.tokenize(documents)
+        for doc in documents:
+            _temp = []
+            for word in doc:
+                if not (word in stopwords):
+                    _temp.append(word)
+            temp.append(_temp)
+
+        # Patch the tokens back together
+        return [" ".join(tokens) for tokens in temp]
+
+    def stem(self, documents: list, stemmer=SnowballStemmer("german")):
+        """
+        Stem a list of documents
+
+        :param documents: list of documents to be stemmed
+        :param stemmer: specific stemmer to be used
+        :return: stemmed tokenized sentences
+        """
+
+        stemmed = []
+        documents = self.tokenize(documents)
+        for sent in documents:
+            _stemmed = []
+            for item in sent:
+                _stemmed.append(stemmer.stem(item))
+            stemmed.append(_stemmed)
+
+        # Patch the stemmed tokens back together
+        stemmed_docs = [" ".join(sent) for sent in stemmed]
+        return stemmed_docs
+
+    def term_frequency(self, documents: list, word: str):
+        """
+        Computes the frequency of a term in a list of documents
+        :param documents: list of documents to be inspected
+        :param word: target word
+        :return: the frequency at which a term appears in all documents
+        """
+        if word == None:
+            return 0
+
+        frequency = sum([self.tokenize(x).count(word) for x in docs])
+        return frequency
+
+    def num_docs_containing(self, documents: list, word: str):
+        """
+        finds the number of documents containing a specific word/string
+        :param documents: list of documents to be inspected
+        :param word: target word to find in documents
+        :return: number of documents containing the target word
+        """
+
+        count = 0
+        for document in documents:
+            if self.term_frequency(word, document) > 0:
+                count += 1
+        return count
+
+    def word_count(self, documents: list):
+        """
+        counts the number of words in each document and returns it as a list
+        :param documents: list of documents to be inspected
+        :return: list of number of words in each document
+        """
+
+        return [len(self.tokenize(x)) for x in documents]
+
+    def clean_accents(self, documents: list):
+        """
+        Normalizes umlauts, ß, and other accents
+        :param documents: list of documents to be cleaned
+        :return: cleaned documents (in the same order)
+        """
+
+        docs = documents
+
+        # Defines the desired mapping
+        umlaut_dictionary = {u'ä': 'a', u'ö': 'o', u'ü': 'u', u'ß': 'ss', u'ì': 'i', u'ı': 'i', u'é': 'e'}
+        umap = {ord(key): val for key, val in umlaut_dictionary.items()}
+
+        # Executes the mapping
+        cleaned_docs = [d.translate(umap) for d in docs]
+
+        return cleaned_docs  # Script of typical usage
+
+
+if __name__ == '__main__':
+    docs = data.Message
+    pr = CleanMachine()
+    cleaned_docs, original_docs = pr.clean(documents=docs, sample=10000)
+
+    print('Number of documents = ' + str(len(original_docs)))
+    print('Number of cleaned documents = ' + str(len(cleaned_docs)))
+
+#    for i in range(0, len(original_docs)):
+#        print('Original document = ' + original_docs[i])
+#        print("Cleaned document = " + cleaned_docs[i])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
