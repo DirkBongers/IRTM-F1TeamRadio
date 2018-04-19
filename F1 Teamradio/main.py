@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 """
 Created on Thu Apr 12 21:13:10 2018
 
@@ -8,6 +8,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
 #from wordcloud import WordCloud
 PATH = 'C:\\Users\\dbn\\Desktop\\IRTM-F1TeamRadio\\F1 Teamradio\\'
 filelist = os.listdir(PATH + 'Transcripts')
@@ -434,7 +435,9 @@ if __name__ == '__main__':
 #    for i in range(0, len(original_docs)):
 #        print('Original document = ' + original_docs[i])
 #        print("Cleaned document = " + cleaned_docs[i])
-
+    
+    tf = TfidfVectorizer(analyzer='word', ngram_range=(1,3), min_df = 0, stop_words = 'english')
+    tfidf_matrix =  tf.fit_transform(cleaned_docs)
 
 
 
