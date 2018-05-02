@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans, MiniBatchKMeans
 #from wordcloud import WordCloud
 PATH = 'C:\\Users\\dbn\\Desktop\\IRTM-F1TeamRadio\\F1 Teamradio\\'
 filelist = os.listdir(PATH + 'Transcripts')
@@ -180,7 +181,7 @@ class CleanMachine:
         # removes leading, trailing and multiple whitespaces
         # removes sentences containing offensive language
 
-        offensive_words = ['bitch', 'porno', 'sex', 'titten', 'slut']
+        offensive_words = []
         docs = self.sanitize(documents=docs, forbidden_words=offensive_words)
 
         # remove sentences that are too short or too long
@@ -432,13 +433,58 @@ if __name__ == '__main__':
     print('Number of documents = ' + str(len(original_docs)))
     print('Number of cleaned documents = ' + str(len(cleaned_docs)))
 
+    data['CleanedData'] = cleaned_docs
 #    for i in range(0, len(original_docs)):
 #        print('Original document = ' + original_docs[i])
 #        print("Cleaned document = " + cleaned_docs[i])
     
     tf = TfidfVectorizer(analyzer='word', ngram_range=(1,3), min_df = 0, stop_words = 'english')
     tfidf_matrix =  tf.fit_transform(cleaned_docs)
+    km = KMeans(n_clusters=20, init='k-means++', max_iter=100, n_init=1,verbose=True)
+    km.fit(tfidf_matrix)
+    data['ClusterNums'] = km.labels_
 
+
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+sid = SentimentIntensityAnalyzer()
+sentences = data.Message[data.Driver == 'Max Verstappen']
+pos = []
+neg = []
+for sentence in sentences:
+    print(sentence)
+    ss = sid.polarity_scores(sentence)
+    for k in sorted(ss):
+        pos.append(ss['pos'])
+        neg.append(ss['neg'])
+        print('{0}: {1}, '.format(k, ss[k]), end='')
+        print()
+
+#plt.plot(neg)
+#plt.plot(pos)
+import time
+   
+
+for i in range(0,len(pos)):
+    N = 2
+    ind =np.arange(N)  # the x locations for the groups
+    width = 0.27       # the width of the bars
+    fig = plt.figure()
+    
+    ax = fig.add_subplot(111)
+    yvals = [pos[i],neg[i]]
+    rects1 = ax.bar(ind, yvals, width, color='r')
+    ax.set_ylabel('probability')
+    ax.set_xticks(ind)
+    ax.set_xticklabels( ('Positive', 'Negative') )
+    ax.set_ylim([0,0.8])
+    def autolabel(rects):
+        for rect in rects:
+            h = rect.get_height()
+            ax.text(rect.get_x()+rect.get_width()/2., 1.05*h, '%d'%int(h),
+                    ha='center', va='bottom')
+    autolabel(rects1)  
+    plt.show()
+    time.sleep(0.3)  
 
 
 
