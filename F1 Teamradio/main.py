@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 #from wordcloud import WordCloud
-PATH = 'C:\\Users\\dbn\\Desktop\\IRTM-F1TeamRadio\\F1 Teamradio\\'
+PATH = 'C:\\Users\\LucBl\\OneDrive\\Bureaublad\\Uni Master\\IRTM\\Assignment\\IRTM-F1TeamRadio\\F1 Teamradio\\'
 filelist = os.listdir(PATH + 'Transcripts')
 data = pd.read_excel(PATH+'Transcripts\\'+ filelist[0])
 racename = filelist[0].replace('2017-','')
@@ -132,7 +132,6 @@ from random import Random
 
 import nltk
 import numpy as np
-from gensim import corpora
 from nltk import ngrams
 from nltk.stem.snowball import SnowballStemmer
 
