@@ -30,6 +30,22 @@ for i in range(1,19):
 data = data.dropna(axis=0,how='any')
 data.index = range(0,len(data.Driver))
 
+filelistR = os.listdir(PATH + 'Results')
+dataR = pd.read_excel(PATH+'Results\\'+ filelistR[0])
+racenameR = filelistR[0].replace('2017-','')
+racenameR = racenameR.replace('-Results.xlsx','')
+TrackR = [racenameR]*len(dataR.DRIVER)
+dataR['Track'] = TrackR
+for i in range(1,19):
+    df = pd.read_excel(PATH+'Results\\'+ filelistR[i])
+    racenameR = filelistR[i].replace('2017-','')
+    racenameR = racenameR.replace('-Results.xlsx','')
+    TrackR = [racenameR]*len(df.DRIVER)
+    df['Track'] = TrackR
+    #print(df.columns.values)
+    #print(filelist[i])
+    dataR = pd.concat([dataR,df])
+
 To = [None]*len(data.Driver)
 From = [None]*len(data.Driver)
 data['To'] = pd.Series(To,index = data.index)
