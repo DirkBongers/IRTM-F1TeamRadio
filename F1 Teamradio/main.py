@@ -9,9 +9,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 #from wordcloud import WordCloud
-PATH = 'C:\\Users\\LucBl\\OneDrive\\Bureaublad\\Uni Master\\IRTM\\Assignment\\IRTM-F1TeamRadio\\F1 Teamradio\\'
+#PATH = 'C:\\Users\\LucBl\\OneDrive\\Bureaublad\\Uni Master\\IRTM\\Assignment\\IRTM-F1TeamRadio\\F1 Teamradio\\'
+PATH = 'C:\\Users\\dbn\\Desktop\\IRTM-F1TeamRadio\\F1 Teamradio\\'
 filelist = os.listdir(PATH + 'Transcripts')
 data = pd.read_excel(PATH+'Transcripts\\'+ filelist[0])
 racename = filelist[0].replace('2017-','')
@@ -455,9 +456,12 @@ if __name__ == '__main__':
     
     tf = TfidfVectorizer(analyzer='word', ngram_range=(1,3), min_df = 0, stop_words = 'english')
     tfidf_matrix =  tf.fit_transform(cleaned_docs)
-    km = KMeans(n_clusters=20, init='k-means++', max_iter=100, n_init=1,verbose=True)
+    km = KMeans(n_clusters=30, init='k-means++', max_iter=100, n_init=1,verbose=True)
+    ac = AgglomerativeClustering(n_clusters = 30)
     km.fit(tfidf_matrix)
-    data['ClusterNums'] = km.labels_
+    ac.fit(tfidf_matrix.toarray())
+    data['KmeansClusterNums'] = km.labels_
+    data['AggloClusterNums'] = ac.labels_
 
 
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -473,33 +477,59 @@ for sentence in sentences:
         neg.append(ss['neg'])
         print('{0}: {1}, '.format(k, ss[k]), end='')
         print()
-
+        
+def MatchTeamRadioWithResultData(Radio,Results):
+    Radio.index = range(0,len(Radio.Driver))
+    Results.index = range(0,len(Results.DRIVER))
+    racenames = []
+    filelistR = os.listdir(PATH + 'Results')
+    for i in range(0,len(filelistR)):
+        racenameR = filelistR[i].replace('2017-','')
+        racenameR = racenameR.replace('-Results.xlsx','')
+        racenames.append(racenameR)
+        
+    drivernames = []
+    drivernames.append(Radio.To.unique().tolist())
+    drivernames.append(Radio.From.unique().tolist())
+    drivernames = list(set().union(drivernames[0],drivernames[1]))
+    Radio['Team'] = [None]*len(Radio.Driver)
+    for i in range(0,len(drivernames)):
+        team = None
+        for j in range(0,len(Results.DRIVER)):
+            if Results.DRIVER[j] == drivernames[i]:
+                team = Results.CAR[j]
+                j = len(Results.Driver)
+                for k in range(0,len(Radio.Driver)):
+                    if Radio.Driver[k] == drivernames[i]:
+                        Radio.Team[k] = team
+            
+    
 #plt.plot(neg)
 #plt.plot(pos)
-import time
-   
-
-for i in range(0,len(pos)):
-    N = 2
-    ind =np.arange(N)  # the x locations for the groups
-    width = 0.27       # the width of the bars
-    fig = plt.figure()
-    
-    ax = fig.add_subplot(111)
-    yvals = [pos[i],neg[i]]
-    rects1 = ax.bar(ind, yvals, width, color='r')
-    ax.set_ylabel('probability')
-    ax.set_xticks(ind)
-    ax.set_xticklabels( ('Positive', 'Negative') )
-    ax.set_ylim([0,0.8])
-    def autolabel(rects):
-        for rect in rects:
-            h = rect.get_height()
-            ax.text(rect.get_x()+rect.get_width()/2., 1.05*h, '%d'%int(h),
-                    ha='center', va='bottom')
-    autolabel(rects1)  
-    plt.show()
-    time.sleep(0.3)  
+#import time
+#   
+#
+#for i in range(0,len(pos)):
+#    N = 2
+#    ind =np.arange(N)  # the x locations for the groups
+#    width = 0.27       # the width of the bars
+#    fig = plt.figure()
+#    
+#    ax = fig.add_subplot(111)
+#    yvals = [pos[i],neg[i]]
+#    rects1 = ax.bar(ind, yvals, width, color='r')
+#    ax.set_ylabel('probability')
+#    ax.set_xticks(ind)
+#    ax.set_xticklabels( ('Positive', 'Negative') )
+#    ax.set_ylim([0,0.8])
+#    def autolabel(rects):
+#        for rect in rects:
+#            h = rect.get_height()
+#            ax.text(rect.get_x()+rect.get_width()/2., 1.05*h, '%d'%int(h),
+#                    ha='center', va='bottom')
+#    autolabel(rects1)  
+#    plt.show()
+#    time.sleep(0.3)  
 
 
 
