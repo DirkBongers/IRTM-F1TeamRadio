@@ -479,27 +479,27 @@ for sentence in sentences:
 import time
    
 
-for i in range(0,len(pos)):
-    N = 2
-    ind =np.arange(N)  # the x locations for the groups
-    width = 0.27       # the width of the bars
-    fig = plt.figure()
-    
-    ax = fig.add_subplot(111)
-    yvals = [pos[i],neg[i]]
-    rects1 = ax.bar(ind, yvals, width, color='r')
-    ax.set_ylabel('probability')
-    ax.set_xticks(ind)
-    ax.set_xticklabels( ('Positive', 'Negative') )
-    ax.set_ylim([0,0.8])
-    def autolabel(rects):
-        for rect in rects:
-            h = rect.get_height()
-            ax.text(rect.get_x()+rect.get_width()/2., 1.05*h, '%d'%int(h),
-                    ha='center', va='bottom')
-    autolabel(rects1)  
-    plt.show()
-    time.sleep(0.3)  
+#for i in range(0,len(pos)):
+#    N = 2
+#    ind =np.arange(N)  # the x locations for the groups
+#    width = 0.27       # the width of the bars
+#    fig = plt.figure()
+#    
+#    ax = fig.add_subplot(111)
+#    yvals = [pos[i],neg[i]]
+#    rects1 = ax.bar(ind, yvals, width, color='r')
+#    ax.set_ylabel('probability')
+#    ax.set_xticks(ind)
+#    ax.set_xticklabels( ('Positive', 'Negative') )
+#    ax.set_ylim([0,0.8])
+#    def autolabel(rects):
+#        for rect in rects:
+#            h = rect.get_height()
+#            ax.text(rect.get_x()+rect.get_width()/2., 1.05*h, '%d'%int(h),
+#                    ha='center', va='bottom')
+#    autolabel(rects1)  
+#    plt.show()
+#      time.sleep(0.3)  
 
 
 
